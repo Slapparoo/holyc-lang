@@ -66,6 +66,15 @@ compatible binary which has been tested on amd linux and an intel mac.
 Thus most `x86_64` architectures should be supported. Creating an `IR` with 
 some optimisations and compiling to `ARM` is high on the TODO list.
 
+## Preequisits 
+GCC, sqlite3
+`sudo apt install sqlite3` 
+``` This may not be enough, on WSL you may also require a 
+ln -s /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 /usr/lib/x86_64-linux-gnu/libsqlite3.so
+to create a new symbolic link to a default shared library
+```
+
+
 ## Building
 Run `make`, then run `make install` (`sudo make install` on linux) this will 
 install the compiler and holyc libraries for strings, hashtables, I/O, maths,
