@@ -66,7 +66,7 @@ compatible binary which has been tested on amd linux and an intel mac.
 Thus most `x86_64` architectures should be supported. Creating an `IR` with 
 some optimisations and compiling to `ARM` is high on the TODO list.
 
-## Preequisits 
+## prerequisits 
 GCC, sqlite3
 `sudo apt install sqlite3` 
 ``` This may not be enough, on WSL you may also require a 
