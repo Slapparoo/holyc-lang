@@ -8,8 +8,8 @@ class StringArray
 StringArray *StringArrayNew()
 {
   StringArray *arr = MAlloc(sizeof(StringArray));
-  arr->entries = MAlloc(sizeof(U8 *) * 32);
-  arr->cap = 32;
+  arr->cap = 64;
+  arr->entries = MAlloc(sizeof(U8 *) * arr->cap);
   arr->len = 0;
   return arr;
 }
