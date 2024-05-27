@@ -1,0 +1,38 @@
+#!/bin/bash
+
+srcfile=$(mktemp /tmp/hcsh.XXXXXX.HC)
+
+# -s for script as a string parameter
+if [ "$1" == "-s" ]; then
+    echo $2 > $srcfile
+elif [ -f "$1" ]; then
+    
+    line=$(head -1 $1 | cut -c 1-2)
+    if [ "$line" == "#!" ]; then
+        # remove the shebang line
+        tail -n +2 $1 > $srcfile
+    else 
+        cat $1 > $srcfile
+    fi
+else
+    # stdin
+    cat > $srcfile
+fi
+
+echo "" >> $srcfile
+
+# compile
+aoutfile=$(mktemp /tmp/hcsh.XXXXXX.out)
+hcc -o $aoutfile $srcfile
+res=$?
+rm $srcfile
+
+if [ "$res" == "0" ]; then 
+    # run
+    $aoutfile
+    res=$?
+    echo $res
+fi    
+
+[ -f $aoutfile ] && rm $aoutfile
+exit $res
