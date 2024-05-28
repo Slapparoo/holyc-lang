@@ -469,6 +469,9 @@ public _extern _CALLOC U0 *CAlloc(U64 new_size);
 public _extern _MSIZE U64 MSize(U0 *ptr);
 public _extern _MEMCPY U0 *MemCpy(U0 *dst, U0 *src, U64 len);
 public _extern _MEMSET U0 *MemSet(U0 *dst, I32 ch, U64 len);
+public extern "c" U8 *getenv(U8 *name);
+public extern "c" I32 setenv(U8 *name, U8 *value, I32 overwrite);
+public extern "c" I32 unsetenv(U8 *name);
 
 #define STR_LEN 256
 

@@ -1,0 +1,116 @@
+.TH hcr 1 "May 28, 2024" "1.0" "HolyC Runner Manual"
+.SH NAME
+hcr \- HolyC Runner compile and run HolyC scripts
+
+.SH SYNOPSIS
+.B hcr
+.I [options] [file]
+
+.SH DESCRIPTION
+.B hcr
+is a script to compile and run HolyC code. It can be used in various ways:
+.br
+\(bu As a script interpreter with a shebang \fB#!/usr/local/bin/hcr\fR.
+.br
+\(bu By passing a file as a parameter.
+.br
+\(bu By directing the HolyC code to be run from stdin.
+.br
+\(bu By using a quoted string as a parameter with the \fB-s\fR option.
+
+.SH DEPENDS ON
+.B hcc
+HolyC Compiler holyc-lang \fIhttps://github.com/Jamesbarford/holyc-lang\fR
+
+.SH OPTIONS
+.TP
+.B 
+\-s "HolyC code"
+Compile and run the HolyC code provided as a string.
+
+.TP
+.B stdin
+Compile and run the HolyC code provided as stdin.
+
+.TP
+.B shebang
+Compile and run the HolyC code provided in a file with a shebang.
+
+.SH USAGE
+.TP
+.B hcr file.HC
+Compile and run the HolyC script provided in \fIfile.HC\fR.
+
+.TP
+.B 
+cat myscript.HC | hcr
+Compile and run the HolyC code provided in stdin.
+
+.TP
+.B 
+hcr \-s '"Hello World\\n";'
+Compile and run the HolyC code provided as a string.
+
+.TP
+.B 
+ \./myscript.HC
+Compile and run the HolyC code provided in file with shebang.
+
+.SH EXAMPLES
+.TP
+.B 
+Compiles and runs the provided HolyC code from stdin.
+\(bu cat myscript.HC | hcr
+.br
+\(bu echo '"Hello World\\n";' | hcr
+.br
+\(bu hcr < myscript.HC
+.br
+\(bu hcr << EOF
+.br
+"Hello World\\n";
+.br
+EOF
+
+.TP
+.B shebang 
+HolyC script for this example \fImyscript.HC\fR will be used. The first line is 
+.B #!/usr/local/bin/hcr
+, the execute file permission needs to ne given to the script.
+.br
+
+.br
+chmod u+x myscript.HC
+.br
+
+.br
+.B file content:
+.br
+#!/usr/local/bin/hcr
+.br
+"Hello World\\n";
+.br
+
+.br
+.B to run:
+ \./myscript\.HC
+
+.TP
+.B 
+Compile and run the HolyC code provided as a string.
+hcr \-s '"Hello World\\n";'
+
+.TP
+.B 
+Compile and run the HolyC code file provided as a parameter.
+hcr myscript.HC
+
+
+.SH SEE ALSO
+.BR bash (1),
+.BR hcc (1) 
+.BR https://github.com/Jamesbarford/holyc-lang
+
+
+.SH COPYRIGHT
+Public domain.

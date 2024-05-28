@@ -1,4 +1,14 @@
 #!/bin/bash
+# HolyC compile and run
+#
+# The idea is that this will go in the /usr/local/bin dir then there are some
+# standard options for running
+# - In a script using the shebang #!/usr/local/bin
+# - pass the file as a parameter
+# - direct the HolyC to be run as stdin 
+# - use a quoted string as a parameter with the -s parameter
+
+
 
 srcfile=$(mktemp /tmp/hcsh.XXXXXX.HC)
 
