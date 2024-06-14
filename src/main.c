@@ -12,6 +12,7 @@
 #include "compile.h"
 #include "cctrl.h"
 #include "lexer.h"
+#include "list.h"
 #include "util.h"
 
 #define ASM_TMP_FILE "/tmp/holyc-asm.s"
@@ -26,12 +27,14 @@ typedef struct hccOpts {
     int assemble_only;
     int emit_dylib;
     int emit_object;
+    int run;
     char *infile;
     char *asm_outfile;
     char *obj_outfile;
     char *lib_name;
     char *output_filename;
     char *clibs;
+    List *defines_list;
 } hccOpts;
 
 typedef struct hccLib {
@@ -221,6 +224,12 @@ void emitFile(aoStr *asmbuf, hccOpts *opts) {
                     ASM_TMP_FILE, opts->output_filename);
         }
         system(cmd->data);
+        if (opts->run) {
+            char run_cmd[64];
+            snprintf(run_cmd,sizeof(run_cmd),"./%s",opts->output_filename);
+            system(run_cmd);
+            unlink(opts->output_filename);
+        }
     }
     if (strnlen(opts->clibs,10) > 1) {
         free(opts->clibs);
@@ -242,7 +251,9 @@ void usage(void) {
             "  -lib     Emit a dynamic and static library\n"
             "  -clibs   Link c libraries like: -clibs=`-lSDL2 -lxml2 -lcurl...`\n"
             "  -o       Output filename: hcc -o <name> ./<file>.HC\n"
+            "  -run     Immediately run the file (not JIT)\n"
             "  -g       Not implemented\n"
+            "  -D<var>  Set a compiler #define (does not accept a value)\n"
             "  --help   Print this message\n");
     exit(1);
 }
@@ -253,6 +264,9 @@ void parseCliOptions(hccOpts *opts, int argc, char **argv) {
     }
 
     char *infile = argv[argc-1];
+    char *ptr = NULL;
+    char *tmp = NULL;
+
     getASMFileName(opts,infile);
     opts->infile = infile;
     for (int i = 1; i < argc - 1; ++i) {
@@ -260,26 +274,11 @@ void parseCliOptions(hccOpts *opts, int argc, char **argv) {
             opts->print_ast = 1;
         } else if (!strncmp(argv[i],"-tokens",7)) {
             opts->print_tokens = 1;
-        } else if (!strncmp(argv[i],"-S",2)) {
-            opts->assemble_only = 1;
-        } else if (!strncmp(argv[i],"-lib",4)) {
-            if (i+1 >= argc) {
-                loggerPanic("Invalid compile command, -lib must be followed "
-                        "by a string\n");
-            }
-            opts->emit_dylib = 1;
-            opts->lib_name = argv[i+1];
-            i++;
-        } else if (!strncmp(argv[i],"-o",2)) {
-            opts->output_filename = argv[i+1];
-            i++;
-        } else if (!strncmp(argv[i],"-obj",4)) {
-            opts->emit_object = 1;
         } else if (!strncmp(argv[i],"-clibs",6)) {
             const char *error = "Invalid compile command, -clibs must be followed "
                 "by a list of libraries in single quotes for example "
                 "-clibs=\'-lxml2 ....\'.";
-            char *ptr = argv[i];
+            ptr = argv[i];
             ptr += 6;
             loggerDebug("%s\n",ptr);
             if (*ptr != '=' && *(ptr + 1) != '\'') {
@@ -293,11 +292,54 @@ void parseCliOptions(hccOpts *opts, int argc, char **argv) {
                 ptr++;
             }
             opts->clibs = aoStrMove(str);
+        } else if (!strncmp(argv[i],"--help",6)) {
+            usage();
+        } else if (!strncmp(argv[i],"-run",4)) {
+            opts->run = 1;
+        } else if (!strncmp(argv[i],"-lib",4)) {
+            if (i+1 >= argc) {
+                loggerPanic("Invalid compile command, -lib must be followed "
+                        "by a string\n");
+            }
+            opts->emit_dylib = 1;
+            opts->lib_name = argv[i+1];
+            i++;
+        } else if (!strncmp(argv[i],"-obj",4)) {
+            opts->emit_object = 1;
+        } else if (!strncmp(argv[i],"-o",2)) {
+            opts->output_filename = argv[i+1];
+            i++;
+            if (opts->output_filename == infile) {
+                fprintf(stderr, "hcc: \033[0;31mfatal error\033[0m: no input files.\n"
+                        "Usage: hcc -o <program_name> <file>.HC\n");
+                exit(1);
+            }
+            char *outfile = opts->output_filename;
+            char *infile_no_dot = (infile[0] == '.' && infile[1] == '/')
+            ? infile+2 : infile;
+            if (outfile[0] == '.' && outfile[1] == '/') {
+                outfile = opts->output_filename+2;
+            }
+            if (!strcmp(outfile,infile_no_dot)) {
+                fprintf(stderr, "hcc: \033[0;31mfatal error\033[0m: output file"
+                        " same name as input file.\n");
+                exit(1);
+            }
         } else if (!strncmp(argv[i],"-g",2)) {
             opts->asm_debug_comments = 1;
             loggerPanic("--g not implemented\n");
-        } else if (!strncmp(argv[i],"--help",6)) {
-            usage();
+        } else if (!strncmp(argv[i],"-S",2)) {
+            opts->assemble_only = 1;
+        } else if (!strncmp(argv[i],"-D",2)) {
+            if (opts->defines_list == NULL) {
+                opts->defines_list = listNew();
+            }
+            ptr = argv[i];
+            ptr += 2;
+            tmp = strndup(ptr,128);
+            /*@Leak who owns this memory? This list or the macro_defs hashtable
+             * on Cctrl? */
+            listAppend(opts->defines_list,tmp);
         }
     }
 }
@@ -316,28 +358,33 @@ int main(int argc, char **argv) {
 
     memset(&opts,0,sizeof(opts));
     opts.clibs = "";
+    opts.defines_list = NULL;
     opts.output_filename = "a.out";
     /* now parse cli options */
     parseCliOptions(&opts,argc,argv);
-    
-    cc = CctrlNew();
+
+    cc = cctrlNew();
+    if (opts.defines_list) {
+        cctrlSetCommandLineDefines(cc,opts.defines_list);
+    }
 
     if (opts.print_tokens) {
         List *tokens = compileToTokens(cc,opts.infile,lexer_flags);
         lexemePrintList(tokens);
-        lexemeListRelease(tokens);
-    } else if (opts.print_ast) {
-        compileToAst(cc,opts.infile,lexer_flags);
-        compilePrintAst(cc);
-    }
-
-    if (opts.print_tokens || opts.print_ast) {
+        lexemelistRelease(tokens);
         return 0;
     }
 
     compileToAst(cc,opts.infile,lexer_flags);
+    if (opts.print_ast) {
+        compilePrintAst(cc);
+        return 0;
+    }
+
     asmbuf = compileToAsm(cc);
 
-
     emitFile(asmbuf, &opts);
+    if (opts.defines_list) {
+        listRelease(opts.defines_list,NULL);
+    }
 }
